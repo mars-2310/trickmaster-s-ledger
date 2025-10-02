@@ -12,11 +12,147 @@ model User {
   email     String   @unique
   name      String?
   image     String?
-  provider  String
+  provider  Provider
   createdAt DateTime @default(now())
-}
+  ownedLedgers  Ledger[]    @relation("LedgerOwner")
+  ledgerMembers LedgerMember[]
+  sparks        Spark[]     @relation("SparkCreator")
+  activities    Activity[]
 
+  @@map("users")
+}
 
 enum Provider {
   Google
+}
+
+model Ledger {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  ownerId     String      @map("owner_id")
+  isShared    Boolean     @default(false) @map("is_shared")
+  shareCode   String?     @unique @map("share_code")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  
+  // Relations
+  owner       User        @relation("LedgerOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members     LedgerMember[]
+  sparks      Spark[]
+  activities  Activity[]
+
+  @@index([ownerId])
+  @@index([shareCode])
+  @@map("ledgers")
+}
+
+enum MemberRole {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+model LedgerMember {
+  id        String      @id @default(cuid())
+  ledgerId  String      @map("ledger_id")
+  userId    String      @map("user_id")
+  role      MemberRole  @default(EDITOR)
+  joinedAt  DateTime    @default(now()) @map("joined_at")
+
+  ledger    Ledger      @relation(fields: [ledgerId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([ledgerId, userId])
+  @@index([ledgerId])
+  @@index([userId])
+  @@map("ledger_members")
+}
+
+enum SparkCategory {
+  COMEDY
+  ACROBATICS
+  MAGIC
+  GRAND_FINALE
+  OTHER
+}
+
+model Spark {
+  id              String          @id @default(cuid())
+  ledgerId        String          @map("ledger_id")
+  title           String
+  content         String          @db.Text
+  category        SparkCategory   @default(OTHER)
+  isExpanded      Boolean         @default(false) @map("is_expanded")
+  expandedContent String?         @db.Text @map("expanded_content")
+  voiceUrl        String?         @map("voice_url")
+  tags            String[]        @default([])
+  createdById     String          @map("created_by_id")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  
+  ledger          Ledger          @relation(fields: [ledgerId], references: [id], onDelete: Cascade)
+  createdBy       User            @relation("SparkCreator", fields: [createdById], references: [id])
+  connectionsFrom SparkConnection[] @relation("FromSpark")
+  connectionsTo   SparkConnection[] @relation("ToSpark")
+
+  @@index([ledgerId])
+  @@index([createdById])
+  @@index([category])
+  @@index([createdAt])
+  // @@fulltext([title, content]) 
+  @@map("sparks")
+}
+
+enum ConnectionType {
+  BUILDS_ON
+  COMBINES_WITH
+  INSPIRED_BY
+  PART_OF
+}
+
+model SparkConnection {
+  id             String          @id @default(cuid())
+  fromSparkId    String          @map("from_spark_id")
+  toSparkId      String          @map("to_spark_id")
+  connectionType ConnectionType  @map("connection_type")
+  strength       Int             @default(5) // 1-10 scale
+  createdAt      DateTime        @default(now()) @map("created_at")
+  
+  // Relations
+  fromSpark      Spark           @relation("FromSpark", fields: [fromSparkId], references: [id], onDelete: Cascade)
+  toSpark        Spark           @relation("ToSpark", fields: [toSparkId], references: [id], onDelete: Cascade)
+
+  @@unique([fromSparkId, toSparkId])
+  @@index([fromSparkId])
+  @@index([toSparkId])
+  @@map("spark_connections")
+}
+
+enum ActivityType {
+  SPARK_CREATED
+  SPARK_UPDATED
+  SPARK_DELETED
+  SPARK_EXPANDED
+  CONNECTION_CREATED
+  MEMBER_JOINED
+  MEMBER_LEFT
+}
+
+model Activity {
+  id          String        @id @default(cuid())
+  ledgerId    String        @map("ledger_id")
+  userId      String        @map("user_id")
+  actionType  ActivityType  @map("action_type")
+  resourceId  String?       @map("resource_id") // ID of affected resource
+  metadata    Json?         // Additional context
+  createdAt   DateTime      @default(now()) @map("created_at")
+  
+  // Relations
+  ledger      Ledger        @relation(fields: [ledgerId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id])
+
+  @@index([ledgerId, createdAt])
+  @@index([userId])
+  @@map("activities")
 }
