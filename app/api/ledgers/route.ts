@@ -17,16 +17,16 @@ export async function GET() {
       }, {
         status: 401
       });
-    };
+    }
 
     const ledgers = await prismaClient.ledger.findMany({
       where: {
         OR: [
-          { ownerId: session?.user?.id },
-          { members: { some: { userId: session?.user?.id } } }
+          { ownerId: user.id },
+          { members: { some: { userId: user.id } } }
         ]
       },
-      include : { members: true }
+      include: { members: true }
     });
 
     return NextResponse.json(ledgers);
@@ -38,7 +38,7 @@ export async function GET() {
       status: 500
     });
   }
-};
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -55,14 +55,14 @@ export async function POST(req: NextRequest) {
       }, {
         status: 401
       });
-    };
+    }
 
     const data = await req.json();
     const ledger = await prismaClient.ledger.create({
       data: {
         name: data.name,
         description: data.description,
-        ownerId: session?.user?.id,
+        ownerId: user.id,
       }
     });
 
@@ -75,4 +75,4 @@ export async function POST(req: NextRequest) {
       status: 500
     });
   }
-};
+}

@@ -99,8 +99,7 @@ model Spark {
   @@index([ledgerId])
   @@index([createdById])
   @@index([category])
-  @@index([createdAt])
-  // @@fulltext([title, content]) 
+  @@index([createdAt]) 
   @@map("sparks")
 }
 

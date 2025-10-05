@@ -5,7 +5,7 @@ const openai = new OpenAI({
   apiKey: process.env.PERPLEXITY_API_KEY
 });
 
-async function expandSpark(content : string, category : string, context? : string) {
+async function expandSpark(content : string, category : string) {
   const systemPrompt = `You are a creative director for circus performances. 
 Your job is to take brief performance ideas and expand them into detailed, 
 actionable routines with timing, props, safety notes, and audience engagement tips.
@@ -23,8 +23,6 @@ Format the output with clear markdown headers and bullet points.`;
 
 "${content}"
 
-${context ? `Additional context: ${context}` : ''}
-
 Provide a comprehensive routine that a performer could actually use.`;
 
   try{
@@ -33,7 +31,7 @@ Provide a comprehensive routine that a performer could actually use.`;
         {role: 'system', content: systemPrompt},
         {role: 'user', content: userPrompt}
       ],
-      model: "deepseek-chat",
+      model: "sonar",
       temperature: 0.75,
       max_tokens: 1000
     });
@@ -48,6 +46,25 @@ Provide a comprehensive routine that a performer could actually use.`;
   }
 };
 
-async function Summarize() {
-  
+async function Summarize(description: string, category: string) {
+
+  const userPrompt = `Summarize the following spark in 2-3 sentences, highlighting the key points and purpose:\n"${description}".`
+  try{
+    const completion = await openai.chat.completions.create({
+      messages: [
+        {role: 'user', content: userPrompt}
+      ],
+      model: "sonar",
+      temperature: 0.75,
+      max_tokens: 1000
+    });
+
+    return {
+      expandedContent: completion.choices[0].message.content || '',
+      tokensUsed: completion.usage?.total_tokens || 0
+    };
+  } catch(e) {
+    console.log("Perplexity API error: ", e);
+    throw new Error('Failed to expand spark with AI');
+  }
 }
